@@ -6,20 +6,32 @@
 
 This is a fully functional offline version of the original hacking minigame within Fenris Creation's EVE Online. 
 
-With this sim you can pick your own values for player and board stats, which for example allows you to see if an expensive Zeugma Integrated Analyzer with Neural Lace 'Blackglass' Net Intrusion 920-40 is worth the upgrade before you buy it, or allows you to play your favourite minigame on a much larger board or with stronger and more defences if you wanted.
+With this sim you can pick your own values for player and board stats, which for example allows you to see if an expensive *Zeugma Integrated Analyzer* with *Neural Lace 'Blackglass' Net Intrusion 920-40* is worth the upgrade before you buy it, or allows you to play your favourite minigame on a much larger board or with stronger and more defences if you wanted, or feel unbeatable as you kill everything with your modified 100 strength 
+
+... sadly you don't get any of the sweet valuable explorer loot for completing hacks in this simulation. :( 
 
 I hope you have as much fun with this as I had building it!
 
 
-## Installation
+## How to run
 
-Copy the python file and images folder both to a single location of your choice. Run the python file there.
+1. Copy the **'EVE_hacking_simulator.py'** file and **'images'** folder both to a single location of your choice
+2. *(Probably take a glance at the Python code, I wouldn't blindly run something from the internet)*
+3. Run the file with Python
 
-If you make a shortcut to run the file, the image folder contains three icon images for the shortcut so you can pick your favourite analyzer tool.
+For example navigate to the location you picked in File Explorer, type 'cmd' and then Enter in the bar to open command prompt at that location. Then run `python EVE_hacking_simulator.py` to start.
+
+Alternatively and maybe easier:
+
+Copy the path to the file including the filename. Create a new desktop shortcut using that path. **Done!**
+
+I've added three icon images to the image folder for the shortcut so you can pick your favourite analyzer tool.
 
 ## Questions, bugs, feedback or other remarks?
 
-Contact Gerard Amatin in EVE. I will occasionally read my EVE mail, or else you can post [in the forum thread here](https://forums.eveonline.com/t/eve-hacking-simulator/513203).
+Contact Gerard Amatin:
+
+I occasionally read my EVE mail, or else you can post in [the forum thread here](https://forums.eveonline.com/t/eve-hacking-simulator/513203).
 
 ## Future plans
 
@@ -37,8 +49,10 @@ Yes! It was one of the reasons I wanted to make this sim, to test some ideas I h
 
 Why don't they have some unique differences so that hacking a data site *feels* different than a relic site?
 
-Also, this minigame may put too much emphasis on strength in it's current state. Defense nodes hit second and cannot hit back if they are dead, which means increasing strength ironically often is better for your coherence than increasing coherence. This makes a Neural Lace 'Bluefire' Net Ablation 960-10 implant (which sacrifices strength to add coherence) a questionable choice.
+Also, this minigame may put too much emphasis on strength in it's current state. Defense nodes hit last and cannot hit back if they are dead, which means increasing strength ironically often is better for your coherence than increasing coherence. This makes a *Neural Lace 'Bluefire' Net Ablation 960-10* implant (which sacrifices strength to add coherence) a questionable choice.
 
-Lastly I think the minigame could do with some more strategic choices. Usually the best thing to do is 'just kill the defense node'.
+Lastly I think the minigame could do with some more strategic choices. Often the best thing to do is 'just blindly kill any defense nodes that pop up', especially when you're at 60 strength. Wouldn't it be nice if there was a valid choice to leave certain defense nodes alive longer?
 
-Hopefully I (and others using this tool) can come up with creative ideas that address those issues!
+Maybe I (and others using this tool) can come up with creative ideas that address those issues, and hopefully the feedback can even get Fenris Creations to further improve their hacking minigame!
+
+Or if not, at least we can have fun with it.
