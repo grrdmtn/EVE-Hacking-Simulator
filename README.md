@@ -37,7 +37,7 @@ Yes! It was one of the reasons I wanted to make this sim, to test some ideas I h
 
 Why don't they have some unique differences so that hacking a data site *feels* different than a relic site?
 
-Also, this minigame puts much emphasis on strength in it's current state, because defense nodes hit second and cannot hit back if they are dead. This means increasing strength is often better for your coherence than increasing coherence, and makes a Neural Lace 'Bluefire' Net Ablation 960-10 implant (which reduces strength to add coherence) a questionable choice.
+Also, this minigame may put too much emphasis on strength in it's current state. Defense nodes hit second and cannot hit back if they are dead, which means increasing strength ironically often is better for your coherence than increasing coherence. This makes a Neural Lace 'Bluefire' Net Ablation 960-10 implant (which sacrifices strength to add coherence) a questionable choice.
 
 Lastly I think the minigame could do with some more strategic choices. Usually the best thing to do is 'just kill the defense node'.
 
