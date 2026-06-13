@@ -5,11 +5,8 @@ import random
 import tkinter
 import warnings
 
-# Sets the board size. Try 50 by 50 I dare you. No I did not make a scroll bar.
-# 2 by 1 or 1 by 2 is also possible. Not very challenging though.
-# The UI prefers widths of 5 and above. Sizes between 6-10 seem common in EVE.
-BOARD_HEIGHT = 9
-BOARD_WIDTH = 10
+# Difficulty of the nodes. Options include "very easy", "easy", "medium", "hard" and "hardest"
+DIFFICULTY = "hard"
 
 # Player starting stats
 # - T1 Alpha:               25 strength, 70 coherence
@@ -18,15 +15,17 @@ BOARD_WIDTH = 10
 STRENGTH = 40
 COHERENCE = 110
 
+# Sets the board size. Try 50 by 50 I dare you. No I did not make a scroll bar.
+# 2 by 1 or 1 by 2 is also possible. Not very challenging though.
+# The UI prefers widths of 5 and above. Sizes between 6-10 seem common in EVE.
+BOARD_HEIGHT = 9
+BOARD_WIDTH = 10
+
 # Fractions should be interpreted as 1/FRACTION, so a value of 4 affects a quarter of the nodes
 FRACTION_REMOVED = 4
 FRACTION_DEFENSE = 25
 FRACTION_UTILITY = 25
 FRACTION_CACHE = 25
-
-# Difficulty of the nodes. Options include 'very easy', 'easy', 'medium', 'hard' and 'hardest'
-# TODO: Add this, it is nonfunctional for now
-DIFFICULTY = "hard"
 
 # No need to change these unless you want to break the layout
 HEX = "#030303"
@@ -44,8 +43,10 @@ canvas.place(x=0, y=0, relwidth=1, relheight=1)
 # Make sure to have an 'images' folder (containing the images) in the same location as this python file!
 BASE_DIR = Path(__file__).resolve().parent
 IMAGES = {
+    "Core_green": PhotoImage(file=BASE_DIR / "images/Node_core_green.png"),
+    "Core_yellow": PhotoImage(file=BASE_DIR / "images/Node_core_yellow.png"),
+    "Core_red": PhotoImage(file=BASE_DIR / "images/Node_core_red.png"),
     "Antivirus": PhotoImage(file=BASE_DIR / "images/Node_antivirus.png"),
-    "Core": PhotoImage(file=BASE_DIR / "images/Node_core_hard.png"),
     "Data Cache": PhotoImage(file=BASE_DIR / "images/Node_data_cache.png"),
     "Empty": PhotoImage(file=BASE_DIR / "images/Node_empty.png"),
     "Encrypted": PhotoImage(file=BASE_DIR / "images/Node_encrypted.png"),
@@ -59,10 +60,10 @@ IMAGES = {
     "Vector": PhotoImage(file=BASE_DIR / "images/Node_secondary_vector.png"),
     "Stats": PhotoImage(file=BASE_DIR / "images/Stats.png"),
     "Tool Empty": PhotoImage(file=BASE_DIR / "images/Tool_empty.png"),
-    "Tool Shield": PhotoImage(file=BASE_DIR / "images/Tool_polymorphic_shield.png"),
-    "Tool Vector": PhotoImage(file=BASE_DIR / "images/Tool_secondary_vector.png"),
     "Tool Repair": PhotoImage(file=BASE_DIR / "images/Tool_self_repair.png"),
     "Tool Rot": PhotoImage(file=BASE_DIR / "images/Tool_kernel_rot.png"),
+    "Tool Shield": PhotoImage(file=BASE_DIR / "images/Tool_polymorphic_shield.png"),
+    "Tool Vector": PhotoImage(file=BASE_DIR / "images/Tool_secondary_vector.png"),
 }
 
 
@@ -89,10 +90,11 @@ class Encounter:
     TITLE = "Placeholder: text"
     BODY = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
 
-    def __init__(self, player, node=None):
+    def __init__(self, player, difficulty, node=None):
         self.node = node
         self.type = self.TYPE
         self.player = player
+        self.difficulty = difficulty
         self.image = IMAGES[self.IMAGE_KEY] if self.IMAGE_KEY else None
         self.power = self.POWER
         self.body = self.BODY
@@ -116,10 +118,11 @@ class DataCache(Encounter):
     TITLE = "Data Cache"
     BODY = "Data Caches are archives which can contain Defense or Utility subsystems. Reveal the contents of the Data Cache by left clicking it."
 
-    def __init__(self, player, node=None):
-        super().__init__(player, node)
+    def __init__(self, player, difficulty, node=None):
+        super().__init__(player, difficulty, node)
         self.title = self.TITLE
         self.body = self.BODY
+        self.difficulty = difficulty
 
     def interact(self, events):
         """
@@ -127,11 +130,15 @@ class DataCache(Encounter):
         Returns the random utility or defense.
         """
         if random.random() < 0.5:
-            random_utility = random.choice(UTILITIES)
-            return random_utility(self.player, self.node)
+            random_utility = random.choice(
+                DIFFICULTY_VARIABLES[self.difficulty]["DataCache_Utilities"]
+            )
+            return random_utility(self.player, self.difficulty, self.node)
         else:
-            random_defense = random.choice(DEFENSES)
-            return random_defense(self.player, self.node)
+            random_defense = random.choice(
+                DIFFICULTY_VARIABLES[self.difficulty]["Defenses"]
+            )
+            return random_defense(self.player, self.difficulty, self.node)
 
 
 class Utility(Encounter):
@@ -142,8 +149,8 @@ class Utility(Encounter):
     TOOL_BODY = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
     CHARGES = None
 
-    def __init__(self, player, node=None, slot=None):
-        super().__init__(player, node)
+    def __init__(self, player, difficulty, node=None, slot=None):
+        super().__init__(player, difficulty, node)
         self.title = self.TITLE
         self.body = self.BODY
         self.tool_image_key = self.TOOL_IMAGE_KEY
@@ -154,6 +161,7 @@ class Utility(Encounter):
         self.slot = slot
         self.player = player
         self.targeting = False
+        self.difficulty = difficulty
 
     def interact(self, events):
         """
@@ -173,10 +181,11 @@ class Utility(Encounter):
 class Defense(Encounter):
     instances = []
 
-    def __init__(self, player, node=None):
-        super().__init__(player, node)
-        self.coherence = self.COHERENCE
-        self.strength = self.STRENGTH
+    def __init__(self, player, difficulty: str, node=None):
+        super().__init__(player, difficulty, node)
+        difficulty_values = DIFFICULTY_VARIABLES[difficulty][self.__class__.__name__]
+        self.coherence = difficulty_values["Coherence"]
+        self.strength = difficulty_values["Strength"]
         self.title = self.TITLE
         self.body = self.BODY
 
@@ -233,18 +242,18 @@ class Defense(Encounter):
 
 class Core(Defense):
     TYPE = "System Core"
-    IMAGE_KEY = "Core"
-    COHERENCE = 90
-    STRENGTH = 10
     TITLE = "System Core"
     BODY = "Destroying the System Core successfully completes your hacking attempt. You can attack the System Core by left clicking it."
+
+    def __init__(self, player, difficulty, node=None):
+        super().__init__(player, difficulty, node)
+        self.IMAGE_KEY = DIFFICULTY_VARIABLES[self.difficulty]["Core_image_key"]
+        self.image = IMAGES[self.IMAGE_KEY]
 
 
 class Firewall(Defense):
     TYPE = "Firewall"
     IMAGE_KEY = "Firewall"
-    COHERENCE = 80
-    STRENGTH = 20
     TITLE = "Defense Subsystem: Firewall"
     BODY = "The Firewall is a standard piece of system defense known for its high coherence. You can attack the Firewall by left clicking it."
 
@@ -252,8 +261,6 @@ class Firewall(Defense):
 class Restoration(Defense):
     TYPE = "Restoration Node"
     IMAGE_KEY = "Restorer"
-    COHERENCE = 80
-    STRENGTH = 10
     POWER = 20
     TITLE = "Defense Subsystem: Restoration Node"
     BODY = "While the Restoration Node subsystem is active, it will restore coherency to other uncovered Defense Subsystems. You can attack the Restoration Node by left clicking it."
@@ -287,8 +294,6 @@ class Restoration(Defense):
 class Antivirus(Defense):
     TYPE = "Antivirus"
     IMAGE_KEY = "Antivirus"
-    COHERENCE = 60
-    STRENGTH = 40
     TITLE = "Defense Subsystem: Anti-Virus"
     BODY = "The Anti-Virus is a standard piece of system defense known for its high strength. You can attack the Anti-Virus by left clicking it."
 
@@ -296,8 +301,6 @@ class Antivirus(Defense):
 class Suppressor(Defense):
     TYPE = "Suppressor"
     IMAGE_KEY = "Suppressor"
-    COHERENCE = 60
-    STRENGTH = 15
     POWER = 15
     TITLE = "Defense Subsystem: Virus Suppressor"
     BODY = "While the Virus Suppressor defense subsystem is active, your virus strength is reduced. You can attack the Virus Suppressor by left clicking it."
@@ -437,7 +440,7 @@ class Rot(Utility):
     def affect_target(self, node, events):
         self.player.target_selection = None
         coherence = node.encounter.coherence
-        # TODO: Check this. Should this be rounded up or down? Rounding down for now.
+        # Kernel rot does not round in your favour, the reduced value is rounded down.
         reduced_coherence = coherence // 2
         node.encounter.coherence -= reduced_coherence
         events.append(("node_coherence_loss", node, reduced_coherence))
@@ -470,8 +473,8 @@ class Repair(Utility):
     TOOL_TITLE = "Utility Subsystem: Self Repair"
     CHARGES = 3
 
-    def __init__(self, player, node=None):
-        super().__init__(player, node)
+    def __init__(self, player, difficulty, node=None):
+        super().__init__(player, difficulty, node)
         # TODO: Check this. Repair values of 5 and 17 are the lowest and highest random values I saw (among 5, 6, 7, 8, 9, 10, 16, 17)
         # I'm not entirely sure of this distribution, it might have a larger range or be affected by difficulty somehow?
         # It could also be weighted, higher values seem rare. Using an even distribution between min and max for now.
@@ -501,8 +504,58 @@ class Repair(Utility):
             print(f"{self.type} is already activated!")
 
 
-DEFENSES = [Firewall, Antivirus, Restoration, Suppressor]
-UTILITIES = [Repair, Shield, Rot, Vector]
+DIFFICULTY_VARIABLES = {
+    "very easy": {
+        "Core": {"Coherence": 50, "Strength": 10},
+        "Firewall": {"Coherence": 40, "Strength": 20},
+        "Antivirus": {"Coherence": 30, "Strength": 30},
+        "Defenses": [Firewall, Antivirus],
+        "Utilities": [Repair],
+        "DataCache_Utilities": [Repair, Rot],
+        "Core_image_key": "Core_green",
+    },
+    "easy": {
+        "Core": {"Coherence": 70, "Strength": 10},
+        "Firewall": {"Coherence": 50, "Strength": 20},
+        "Antivirus": {"Coherence": 30, "Strength": 30},
+        "Defenses": [Firewall, Antivirus],
+        "Utilities": [Repair],
+        "DataCache_Utilities": [Repair, Rot],
+        "Core_image_key": "Core_green",
+    },
+    "medium": {
+        "Core": {"Coherence": 70, "Strength": 10},
+        "Firewall": {"Coherence": 80, "Strength": 20},
+        "Antivirus": {"Coherence": 50, "Strength": 40},
+        "Restoration": {"Coherence": 80, "Strength": 10},
+        "Defenses": [Firewall, Antivirus, Restoration],
+        "Utilities": [Repair, Shield, Rot],
+        "DataCache_Utilities": [Repair, Shield, Rot],
+        "Core_image_key": "Core_yellow",
+    },
+    "hard": {
+        "Core": {"Coherence": 90, "Strength": 10},
+        "Firewall": {"Coherence": 90, "Strength": 20},
+        "Antivirus": {"Coherence": 60, "Strength": 40},
+        "Restoration": {"Coherence": 80, "Strength": 10},
+        "Suppressor": {"Coherence": 60, "Strength": 15},
+        "Defenses": [Firewall, Antivirus, Restoration, Suppressor],
+        "Utilities": [Repair, Shield, Rot, Vector],
+        "DataCache_Utilities": [Repair, Shield, Rot, Vector],
+        "Core_image_key": "Core_red",
+    },
+    "hardest": {
+        "Core": {"Coherence": 120, "Strength": 10},
+        "Firewall": {"Coherence": 100, "Strength": 20},
+        "Antivirus": {"Coherence": 70, "Strength": 40},
+        "Restoration": {"Coherence": 90, "Strength": 10},
+        "Suppressor": {"Coherence": 70, "Strength": 15},
+        "Defenses": [Firewall, Antivirus, Restoration, Suppressor],
+        "Utilities": [Repair, Shield, Rot, Vector],
+        "DataCache_Utilities": [Repair, Shield, Rot, Vector],
+        "Core_image_key": "Core_red",
+    },
+}
 
 
 class Player(object):
@@ -541,7 +594,8 @@ class Engine(object):
     The visible parts will be rendered by the board.
     """
 
-    def __init__(self, player: Player):
+    def __init__(self, player: Player, difficulty: str):
+        self.difficulty = difficulty
         self.width = BOARD_WIDTH
         self.height = BOARD_HEIGHT
         self.nodes = []
@@ -639,7 +693,7 @@ class Engine(object):
         )
         self.core = random.choice(core_options)
         self.core.is_core = True
-        self.core.encounter = Core(self.player, self.core)
+        self.core.encounter = Core(self.player, self.difficulty, self.core)
 
     def distribute_encounters(self):
         """
@@ -669,8 +723,8 @@ class Engine(object):
 
         for node in valid_defense_nodes[:defenses]:
             valid_nodes.remove(node)
-            defense = random.choice(DEFENSES)
-            node.encounter = defense(self.player, node)
+            defense = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Defenses"])
+            node.encounter = defense(self.player, self.difficulty, node)
 
         # Also place one more defense node next to the core if possible
         # This is the special case that doesn't adhere to 'rule of 6':
@@ -681,20 +735,19 @@ class Engine(object):
         if candidates:
             node = random.choice(candidates)
             valid_nodes.remove(node)
-            defense = random.choice(DEFENSES)
-            node.encounter = defense(self.player, node)
+            defense = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Defenses"])
+            node.encounter = defense(self.player, self.difficulty, node)
 
         # Randomly place utilities
         for node in valid_nodes[:utilities]:
             node = valid_nodes.pop()
-            node.encounter = Shield(node)
-            utility = random.choice(UTILITIES)
-            node.encounter = utility(self.player, node)
+            utility = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Utilities"])
+            node.encounter = utility(self.player, self.difficulty, node)
 
         # And data caches
         for node in valid_nodes[:caches]:
             node = valid_nodes.pop()
-            node.encounter = DataCache(self.player, node)
+            node.encounter = DataCache(self.player, self.difficulty, node)
 
     def get_neighbours(self, center_node: Node):
         """
@@ -1548,7 +1601,7 @@ def fade_out_and_exit(window: tkinter.Tk, alpha: float = 1.0, success: bool = Fa
 def main():
     player = Player(coherence=COHERENCE, strength=STRENGTH)
 
-    engine = Engine(player)
+    engine = Engine(player, difficulty=DIFFICULTY)
     engine.create_nodes()
     engine.initialize()
 
