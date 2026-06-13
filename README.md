@@ -36,7 +36,7 @@ I occasionally read my EVE mail, or else you can post in [the forum thread here]
 ## Future plans
 
 Now that the base game is fully functional I'm sharing it, but I still plan to do the following:
-- add support to change game difficulty
+- ~~add support to change game difficulty~~ - Done!
 - verify (and if wrong: fix) all the assumptions I made for some of the more niche interactions within the game
 - add better visual feedback to using the utility tool buttons
 - add a menu for easy changing of settings (so that you don't need to change those in the file)
