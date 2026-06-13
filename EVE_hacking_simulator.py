@@ -673,23 +673,22 @@ class Engine(object):
 
     def create_core(self):
         """
-        The core is at least 7 steps away from start if possible, otherwise in any random spot.
+        The core is at least 8 steps away from start if possible, otherwise in any random spot.
 
         (This last condition is what causes the regular "I found the core at first step!" posts)
         """
         self.reset_distances()
         self.start_node.distance = 0
-        self.set_distances(7)
+        self.set_distances(8)
 
         any_core_options = [
             node
             for node in self.iter_nodes()
             if not node.removed and node.distance != 0
         ]
-        far_core_options = [node for node in any_core_options if node.distance > 6]
-        # Too easy if there are fewer than 3 viable options. Not sure if EVE also has such a check or if 1 viable option is enough there.
+        far_core_options = [node for node in any_core_options if node.distance > 7]
         core_options = (
-            far_core_options if len(far_core_options) > 3 else any_core_options
+            far_core_options if len(far_core_options) > 1 else any_core_options
         )
         self.core = random.choice(core_options)
         self.core.is_core = True
