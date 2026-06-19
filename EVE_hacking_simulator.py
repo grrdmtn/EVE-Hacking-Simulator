@@ -1,3 +1,41 @@
+# Filename: EVE_hacking_simulator.py
+# Author: Gerard Amatin
+# Created: 2026-06-19
+# Version: 1.0
+# Description: This script runs a fully functional offline version of the original hacking minigame in EVE Online.
+
+####################################################
+# DEFAULT STARTING SETTINGS - FEEL FREE TO CHANGE! #
+
+# Difficulty of the nodes. Options include "very easy", "easy", "medium", "hard" and "hardest"
+DIFFICULTY = "hard"
+
+# Player starting stats
+# - Rookie:                 25 strength, 50 coherence
+# - T1 Alpha:               25 strength, 70 coherence
+# - T2 Omega:               40 strength, 110 coherence
+# - Zeugma + Blackglass:    60 strength, 90 coherence
+STRENGTH = 40
+COHERENCE = 110
+
+# Board size. Try 50 by 50 I dare you. No I did not make a scroll bar.
+# 2 by 1 or 1 by 2 is also possible. Not very challenging though.
+# The UI prefers widths of 5 and above. Sizes between 6-10 seem common in EVE.
+BOARD_HEIGHT = 9
+BOARD_WIDTH = 10
+
+# Fractions should be interpreted as 1/FRACTION, so a value of 4 affects a quarter of the nodes.
+FRACTION_GAPS = 4
+FRACTION_DEFENSE = 25
+FRACTION_UTILITY = 25
+FRACTION_CACHE = 25
+
+# Returns back to the menu when you fail or succeed, exits the game if False.
+RETURN_TO_MENU_UPON_FINISH = True
+
+####################################################
+
+
 from pathlib import Path
 from tkinter import PhotoImage
 import math
@@ -5,66 +43,64 @@ import random
 import tkinter
 import warnings
 
-# Difficulty of the nodes. Options include "very easy", "easy", "medium", "hard" and "hardest"
-DIFFICULTY = "hard"
-
-# Player starting stats
-# - T1 Alpha:               25 strength, 70 coherence
-# - T2 Omega:               40 strength, 110 coherence
-# - Zeugma + Blackglass:    60 strength, 90 coherence
-STRENGTH = 40
-COHERENCE = 110
-
-# Sets the board size. Try 50 by 50 I dare you. No I did not make a scroll bar.
-# 2 by 1 or 1 by 2 is also possible. Not very challenging though.
-# The UI prefers widths of 5 and above. Sizes between 6-10 seem common in EVE.
-BOARD_HEIGHT = 9
-BOARD_WIDTH = 10
-
-# Fractions should be interpreted as 1/FRACTION, so a value of 4 affects a quarter of the nodes
-FRACTION_REMOVED = 4
-FRACTION_DEFENSE = 25
-FRACTION_UTILITY = 25
-FRACTION_CACHE = 25
-
 # No need to change these unless you want to break the layout
 HEX = "#030303"
+HEX_MENU = "#47504A"
+HEX_MENU2 = "#FFF6C8"
 BUTTON_SIZE = 50
 X_SPACING = 58
 Y_SPACING = 67
 PADDING = 50
 BOTTOM_SPACE = 100
 
-root = tkinter.Tk()
-root.title("EVE Hacking Simulator")
-canvas = tkinter.Canvas(root, bg=HEX, highlightthickness=0)
-canvas.place(x=0, y=0, relwidth=1, relheight=1)
 
-# Make sure to have an 'images' folder (containing the images) in the same location as this python file!
+class ImageNotLoadedError(Exception):
+    pass
+
+
 BASE_DIR = Path(__file__).resolve().parent
-IMAGES = {
-    "Core_green": PhotoImage(file=BASE_DIR / "images/Node_core_green.png"),
-    "Core_yellow": PhotoImage(file=BASE_DIR / "images/Node_core_yellow.png"),
-    "Core_red": PhotoImage(file=BASE_DIR / "images/Node_core_red.png"),
-    "Antivirus": PhotoImage(file=BASE_DIR / "images/Node_antivirus.png"),
-    "Data Cache": PhotoImage(file=BASE_DIR / "images/Node_data_cache.png"),
-    "Empty": PhotoImage(file=BASE_DIR / "images/Node_empty.png"),
-    "Encrypted": PhotoImage(file=BASE_DIR / "images/Node_encrypted.png"),
-    "Firewall": PhotoImage(file=BASE_DIR / "images/Node_firewall.png"),
-    "Repair": PhotoImage(file=BASE_DIR / "images/Node_self_repair.png"),
-    "Restorer": PhotoImage(file=BASE_DIR / "images/Node_restorer.png"),
-    "Rot": PhotoImage(file=BASE_DIR / "images/Node_kernel_rot.png"),
-    "Shield": PhotoImage(file=BASE_DIR / "images/Node_polymorphic_shield.png"),
-    "Suppressor": PhotoImage(file=BASE_DIR / "images/Node_suppressor.png"),
-    "Unexplored": PhotoImage(file=BASE_DIR / "images/Node_unexplored.png"),
-    "Vector": PhotoImage(file=BASE_DIR / "images/Node_secondary_vector.png"),
-    "Stats": PhotoImage(file=BASE_DIR / "images/Stats.png"),
-    "Tool Empty": PhotoImage(file=BASE_DIR / "images/Tool_empty.png"),
-    "Tool Repair": PhotoImage(file=BASE_DIR / "images/Tool_self_repair.png"),
-    "Tool Rot": PhotoImage(file=BASE_DIR / "images/Tool_kernel_rot.png"),
-    "Tool Shield": PhotoImage(file=BASE_DIR / "images/Tool_polymorphic_shield.png"),
-    "Tool Vector": PhotoImage(file=BASE_DIR / "images/Tool_secondary_vector.png"),
-}
+
+
+def load_images(window):
+    """
+    Loads the images.
+
+    (Make sure that the images folder containing the images is in the same location as this python file or this will break!)
+    """
+    global IMAGES
+    try:
+        IMAGES = {
+            "Core_green": PhotoImage(file=BASE_DIR / "images/Node_core_green.png"),
+            "Core_yellow": PhotoImage(file=BASE_DIR / "images/Node_core_yellow.png"),
+            "Core_red": PhotoImage(file=BASE_DIR / "images/Node_core_red.png"),
+            "Antivirus": PhotoImage(file=BASE_DIR / "images/Node_antivirus.png"),
+            "Data Cache": PhotoImage(file=BASE_DIR / "images/Node_data_cache.png"),
+            "Empty": PhotoImage(file=BASE_DIR / "images/Node_empty.png"),
+            "Encrypted": PhotoImage(file=BASE_DIR / "images/Node_encrypted.png"),
+            "Firewall": PhotoImage(file=BASE_DIR / "images/Node_firewall.png"),
+            "Repair": PhotoImage(file=BASE_DIR / "images/Node_self_repair.png"),
+            "Restorer": PhotoImage(file=BASE_DIR / "images/Node_restorer.png"),
+            "Rot": PhotoImage(file=BASE_DIR / "images/Node_kernel_rot.png"),
+            "Shield": PhotoImage(file=BASE_DIR / "images/Node_polymorphic_shield.png"),
+            "Suppressor": PhotoImage(file=BASE_DIR / "images/Node_suppressor.png"),
+            "Unexplored": PhotoImage(file=BASE_DIR / "images/Node_unexplored.png"),
+            "Vector": PhotoImage(file=BASE_DIR / "images/Node_secondary_vector.png"),
+            "Stats": PhotoImage(file=BASE_DIR / "images/Stats.png"),
+            "Tool Empty": PhotoImage(file=BASE_DIR / "images/Tool_empty.png"),
+            "Tool Repair": PhotoImage(file=BASE_DIR / "images/Tool_self_repair.png"),
+            "Tool Rot": PhotoImage(file=BASE_DIR / "images/Tool_kernel_rot.png"),
+            "Tool Shield": PhotoImage(
+                file=BASE_DIR / "images/Tool_polymorphic_shield.png"
+            ),
+            "Tool Vector": PhotoImage(
+                file=BASE_DIR / "images/Tool_secondary_vector.png"
+            ),
+            "Menu": PhotoImage(file=BASE_DIR / "images/Astero_at_sunrise.png"),
+        }
+    except Exception as e:
+        raise ImageNotLoadedError(
+            f"{e} \n Please ensure all images are present in that folder."
+        )
 
 
 class Node(object):
@@ -90,10 +126,11 @@ class Encounter:
     TITLE = "Placeholder: text"
     BODY = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
 
-    def __init__(self, player, difficulty, node=None):
+    def __init__(self, player, engine, difficulty, node=None):
         self.node = node
         self.type = self.TYPE
         self.player = player
+        self.engine = engine
         self.difficulty = difficulty
         self.image = IMAGES[self.IMAGE_KEY] if self.IMAGE_KEY else None
         self.power = self.POWER
@@ -118,8 +155,8 @@ class DataCache(Encounter):
     TITLE = "Data Cache"
     BODY = "Data Caches are archives which can contain Defense or Utility subsystems. Reveal the contents of the Data Cache by left clicking it."
 
-    def __init__(self, player, difficulty, node=None):
-        super().__init__(player, difficulty, node)
+    def __init__(self, player, engine, difficulty, node=None):
+        super().__init__(player, engine, difficulty, node)
         self.title = self.TITLE
         self.body = self.BODY
         self.difficulty = difficulty
@@ -133,12 +170,12 @@ class DataCache(Encounter):
             random_utility = random.choice(
                 DIFFICULTY_VARIABLES[self.difficulty]["DataCache_Utilities"]
             )
-            return random_utility(self.player, self.difficulty, self.node)
+            return random_utility(self.player, self.engine, self.difficulty, self.node)
         else:
             random_defense = random.choice(
                 DIFFICULTY_VARIABLES[self.difficulty]["Defenses"]
             )
-            return random_defense(self.player, self.difficulty, self.node)
+            return random_defense(self.player, self.engine, self.difficulty, self.node)
 
 
 class Utility(Encounter):
@@ -149,8 +186,8 @@ class Utility(Encounter):
     TOOL_BODY = "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
     CHARGES = None
 
-    def __init__(self, player, difficulty, node=None, slot=None):
-        super().__init__(player, difficulty, node)
+    def __init__(self, player, engine, difficulty, node=None, slot=None):
+        super().__init__(player, engine, difficulty, node)
         self.title = self.TITLE
         self.body = self.BODY
         self.tool_image_key = self.TOOL_IMAGE_KEY
@@ -179,10 +216,9 @@ class Utility(Encounter):
 
 
 class Defense(Encounter):
-    instances = []
 
-    def __init__(self, player, difficulty: str, node=None):
-        super().__init__(player, difficulty, node)
+    def __init__(self, player, engine, difficulty: str, node=None):
+        super().__init__(player, engine, difficulty, node)
         difficulty_values = DIFFICULTY_VARIABLES[difficulty][self.__class__.__name__]
         self.coherence = difficulty_values["Coherence"]
         self.strength = difficulty_values["Strength"]
@@ -223,7 +259,7 @@ class Defense(Encounter):
         if self.player.coherence <= 0:
             self.player.finished = True
             print(f"\n\nSYSTEM HACK FAILED\n")
-            fade_out_and_exit(root)
+            events.append(("game_finished", False))
 
     def turn_into_empty_node(self, events):
         """
@@ -235,7 +271,7 @@ class Defense(Encounter):
         super().turn_into_empty_node(events)
         print(f"{self.type} is no more.")
         if not isinstance(self, Core):
-            Defense.instances.remove(
+            self.engine.defense_instances.remove(
                 self
             )  # Tracks non-core defense nodes only, core won't be in it
 
@@ -245,8 +281,8 @@ class Core(Defense):
     TITLE = "System Core"
     BODY = "Destroying the System Core successfully completes your hacking attempt. You can attack the System Core by left clicking it."
 
-    def __init__(self, player, difficulty, node=None):
-        super().__init__(player, difficulty, node)
+    def __init__(self, player, engine, difficulty, node=None):
+        super().__init__(player, engine, difficulty, node)
         self.IMAGE_KEY = DIFFICULTY_VARIABLES[self.difficulty]["Core_image_key"]
         self.image = IMAGES[self.IMAGE_KEY]
 
@@ -265,20 +301,20 @@ class Restoration(Defense):
     TITLE = "Defense Subsystem: Restoration Node"
     BODY = "While the Restoration Node subsystem is active, it will restore coherency to other uncovered Defense Subsystems. You can attack the Restoration Node by left clicking it."
 
-    def restore_defense_nodes(events):
+    def restore_defense_nodes(events, engine):
         """
         Heals random defense nodes for each active Restoration Node.
         The Restoration Nodes won't self-heal.
         """
         restoration_count = sum(
-            isinstance(defense, Restoration) for defense in Defense.instances
+            isinstance(defense, Restoration) for defense in engine.defense_instances
         )
 
         if restoration_count > 0:
-            if len(Defense.instances) > 1:
-                for defense in Defense.instances:
+            if len(engine.defense_instances) > 1:
+                for defense in engine.defense_instances:
                     if isinstance(defense, Restoration):
-                        restoration_targets = Defense.instances.copy()
+                        restoration_targets = engine.defense_instances.copy()
                         restoration_targets.remove(defense)
                         defense_to_be_restored = random.choice(restoration_targets)
                         print(
@@ -313,7 +349,7 @@ class Suppressor(Defense):
         min_strength_value = 10
         suppressor_strength = Suppressor.ability_power(self)
         suppressor_count = sum(
-            isinstance(defense, Suppressor) for defense in Defense.instances
+            isinstance(defense, Suppressor) for defense in self.engine.defense_instances
         )
         previous_suppressed_strength = self.player.suppressed_strength
         suppressed_strength = max(
@@ -473,8 +509,8 @@ class Repair(Utility):
     TOOL_TITLE = "Utility Subsystem: Self Repair"
     CHARGES = 3
 
-    def __init__(self, player, difficulty, node=None):
-        super().__init__(player, difficulty, node)
+    def __init__(self, player, engine, difficulty, node=None):
+        super().__init__(player, engine, difficulty, node)
         # TODO: Check this. Repair values of 5 and 17 are the lowest and highest random values I saw (among 5, 6, 7, 8, 9, 10, 16, 17)
         # I'm not entirely sure of this distribution, it might have a larger range or be affected by difficulty somehow?
         # It could also be weighted, higher values seem rare. Using an even distribution between min and max for now.
@@ -566,7 +602,7 @@ class Player(object):
     def __init__(self, coherence: int, strength: int, utility_element_slots: int = 3):
         self.coherence = coherence
         self.strength = strength
-        self.suppressed_strength = strength
+        self.suppressed_strength = max(strength, 10)  # Cannot be below 10
         self.utility_element_slots = utility_element_slots
         self.utilities = [None] * utility_element_slots
         self.shield = None
@@ -594,16 +630,31 @@ class Engine(object):
     The visible parts will be rendered by the board.
     """
 
-    def __init__(self, player: Player, difficulty: str):
+    def __init__(
+        self,
+        player: Player,
+        difficulty: str,
+        rows: int,
+        columns: int,
+        gaps: int,
+        defense: int,
+        utility: int,
+        cache: int,
+    ):
         self.difficulty = difficulty
-        self.width = BOARD_WIDTH
-        self.height = BOARD_HEIGHT
+        self.width = columns
+        self.height = rows
         self.nodes = []
         self.core = None
         self.start_node = None
         self.player = player
         self.events = []
         self.turn = 0
+        self.defense_instances = []
+        self.gaps_distributed = gaps
+        self.defense_distributed = defense
+        self.utility_distributed = utility
+        self.cache_distributed = cache
 
     def create_nodes(self):
         """
@@ -648,7 +699,7 @@ class Engine(object):
         """
         Removes a random selection of nodes.
         """
-        for _ in range(self.width * self.height // (FRACTION_REMOVED)):
+        for _ in range(self.width * self.height // (self.gaps_distributed)):
             row = random.choice(self.nodes)
             node = random.choice(row)
             node.removed = True
@@ -688,18 +739,15 @@ class Engine(object):
         ]
         far_core_options = [node for node in any_core_options if node.distance > 7]
         core_options = (
-            far_core_options if len(far_core_options) > 1 else any_core_options
+            far_core_options if len(far_core_options) > 0 else any_core_options
         )
         self.core = random.choice(core_options)
         self.core.is_core = True
-        self.core.encounter = Core(self.player, self.difficulty, self.core)
+        self.core.encounter = Core(self.player, self, self.difficulty, self.core)
 
     def distribute_encounters(self):
         """
-        Spreads encounters randomly across the available nodes, based on the values defined in:
-        - FRACTION_DEFENSE
-        - FRACTION_UTILITY
-        - FRACTION_CACHE
+        Spreads encounters randomly across the available nodes.
         """
 
         valid_nodes = [
@@ -710,9 +758,9 @@ class Engine(object):
         random.shuffle(valid_nodes)
 
         # Calculate how many nodes of each type spawn
-        defenses = math.ceil(len(valid_nodes) / FRACTION_DEFENSE)
-        utilities = math.ceil(len(valid_nodes) / FRACTION_UTILITY)
-        caches = math.ceil(len(valid_nodes) / FRACTION_CACHE)
+        defenses = math.ceil(len(valid_nodes) / self.defense_distributed)
+        utilities = math.ceil(len(valid_nodes) / self.utility_distributed)
+        caches = math.ceil(len(valid_nodes) / self.cache_distributed)
 
         # Place defenses according to 'rule of 6': defense never spawns when surrounded by 6 nodes
         valid_defense_nodes = [
@@ -723,7 +771,7 @@ class Engine(object):
         for node in valid_defense_nodes[:defenses]:
             valid_nodes.remove(node)
             defense = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Defenses"])
-            node.encounter = defense(self.player, self.difficulty, node)
+            node.encounter = defense(self.player, self, self.difficulty, node)
 
         # Also place one more defense node next to the core if possible
         # This is the special case that doesn't adhere to 'rule of 6':
@@ -735,18 +783,18 @@ class Engine(object):
             node = random.choice(candidates)
             valid_nodes.remove(node)
             defense = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Defenses"])
-            node.encounter = defense(self.player, self.difficulty, node)
+            node.encounter = defense(self.player, self, self.difficulty, node)
 
         # Randomly place utilities
         for node in valid_nodes[:utilities]:
             node = valid_nodes.pop()
             utility = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Utilities"])
-            node.encounter = utility(self.player, self.difficulty, node)
+            node.encounter = utility(self.player, self, self.difficulty, node)
 
         # And data caches
         for node in valid_nodes[:caches]:
             node = valid_nodes.pop()
-            node.encounter = DataCache(self.player, self.difficulty, node)
+            node.encounter = DataCache(self.player, self, self.difficulty, node)
 
     def get_neighbours(self, center_node: Node):
         """
@@ -877,7 +925,7 @@ class Engine(object):
         if node.is_core:
             self.player.finished = True
             print("\n\nSYSTEM HACK SUCCESSFUL\n\nHere is a carbon.\n")
-            fade_out_and_exit(root, success=True)
+            self.events.append(("game_finished", True))
         else:
             print("Destroying the defensive node clears the blockade.")
             for neighbour in self.get_neighbours(node):
@@ -909,7 +957,7 @@ class Engine(object):
             print(
                 f"Uh-oh! You encountered a {node.encounter.type} at {node.row},{node.column}"
             )
-            Defense.instances.append(node.encounter)
+            self.defense_instances.append(node.encounter)
             self.block_neighbours(node)
             if isinstance(node.encounter, Suppressor):
                 reduced = Suppressor.update_suppressed_strength(
@@ -955,7 +1003,7 @@ class Engine(object):
             # TODO: Check this. Here I make the assumption Restoration happens after Secondary Vectors.
             # I do not know if that is true. If I get evidence for the contrary I'll swap.
             # This does make it less likely that Restoration spoils a well-calculated Vector kill.
-            Restoration.restore_defense_nodes(self.events)
+            Restoration.restore_defense_nodes(self.events, self)
 
             self.turn += 1
 
@@ -993,7 +1041,7 @@ class Engine(object):
                     )
 
                     if isinstance(node.encounter, Defense):
-                        Defense.instances.append(node.encounter)
+                        self.defense_instances.append(node.encounter)
                         self.block_neighbours(node)
 
                         if isinstance(node.encounter, Suppressor):
@@ -1042,10 +1090,13 @@ class Board(object):
     The Board contains everything needed to render the board, the buttons, the layout, the labels and things you see while playing.
     """
 
-    def __init__(self, nodes: list[Node], engine: Engine, player: Player):
+    def __init__(
+        self, window: tkinter.Tk, nodes: list[Node], engine: Engine, player: Player
+    ):
         self.nodes = nodes
         self.engine = engine
         self.player = player
+        self.window = window
         self.buttons = {}
         self.lines = {}
         self.utility_buttons = {}
@@ -1124,7 +1175,7 @@ class Board(object):
             else:
                 x, y = self.get_screen_position(node)
                 button = tkinter.Button(
-                    root,
+                    self.window,
                     fg="white",
                     compound="center",
                     font=("Arial", 8, "bold"),
@@ -1165,7 +1216,9 @@ class Board(object):
                     else:
                         text = "5"
                     path_message_duration = 1500
-                    root.after(path_message_duration, lambda: button.config(text=""))
+                    self.window.after(
+                        path_message_duration, lambda: button.config(text="")
+                    )
                     node.shown_path = True
             elif node.can_be_visited:
                 image = IMAGES["Encrypted"]
@@ -1186,7 +1239,7 @@ class Board(object):
         stats_y = self.engine.height * Y_SPACING + PADDING * 1.5
         stats_x = PADDING - 30
         stats = tkinter.Label(
-            root,
+            self.window,
             image=IMAGES["Stats"],
             text=f"✶{self.player.coherence}\n\n\n\n\nᯤ{self.player.suppressed_strength}",
             compound="center",
@@ -1219,7 +1272,7 @@ class Board(object):
         tooltip_x = (
             self.engine.width * (BUTTON_SIZE + X_SPACING) + PADDING - tooltip_width + 30
         )
-        tooltip_frame = tkinter.Frame(root, bg=HEX, relief="solid")
+        tooltip_frame = tkinter.Frame(self.window, bg=HEX, relief="solid")
         tooltip_frame.place(
             x=tooltip_x, y=tooltip_y, width=tooltip_width, height=tooltip_height
         )
@@ -1295,7 +1348,7 @@ class Board(object):
             image = IMAGES["Tool Empty"]
             utilities_x += BUTTON_SIZE + 15
             button = tkinter.Button(
-                root,
+                self.window,
                 compound="center",
                 image=image,
                 relief="flat",
@@ -1320,7 +1373,7 @@ class Board(object):
 
         # Tooltip frame
         frame = tkinter.Frame(
-            root,
+            self.window,
             bg=HEX,
             relief="solid",
             highlightbackground="grey",
@@ -1458,6 +1511,9 @@ class Board(object):
             elif event[0] == "line_update":
                 _, node = event
                 self.update_lines(node)
+            elif event[0] == "game_finished":
+                _, success = event
+                fade_out_and_exit(self.window, success=success)
             else:
                 warnings.warn(f"Unknown event: {event}")
         self.engine.events.clear()
@@ -1474,7 +1530,7 @@ class Board(object):
         change = str(amount) if amount < 0 else f"+{amount}"
         message_duration = 400
         temp_label = tkinter.Label(
-            root, text=change, bg=HEX, fg="white", font=("Arial", 8)
+            self.window, text=change, bg=HEX, fg="white", font=("Arial", 8)
         )
         x, y = 0, 0
         if node:
@@ -1489,7 +1545,7 @@ class Board(object):
             elif type == "Strength":
                 y = self.engine.height * Y_SPACING + PADDING * 1.5 + 95
         temp_label.place(x=x, y=y)
-        root.after(message_duration, temp_label.destroy)
+        self.window.after(message_duration, temp_label.destroy)
 
     def create_lines(self):
         """
@@ -1507,7 +1563,7 @@ class Board(object):
                         neighbour.row == node.row and neighbour.column > node.column
                     ):
                         x2, y2 = self.get_screen_position(neighbour, location="center")
-                        line = canvas.create_line(
+                        line = self.window.canvas.create_line(
                             x1, y1, x2, y2, fill=grey, width=2, capstyle="round"
                         )
                         self.lines[(node, neighbour)] = line
@@ -1533,20 +1589,20 @@ class Board(object):
                         and node2.visited
                         and not node2.is_core
                     ):
-                        canvas.itemconfig(line, fill=black, width=8)
+                        self.window.canvas.itemconfig(line, fill=black, width=8)
                     elif (
                         node1.blocked
                         and not node1.visited
                         or node2.blocked
                         and not node2.visited
                     ):
-                        canvas.itemconfig(line, fill=black, width=8)
+                        self.window.canvas.itemconfig(line, fill=black, width=8)
                     elif node1.visited and node2.visited:
-                        canvas.itemconfig(line, fill=orange, width=3)
+                        self.window.canvas.itemconfig(line, fill=orange, width=3)
                     elif (
                         (node1.can_be_visited and not node1.blocked) or node1.empty
                     ) or ((node2.can_be_visited and not node2.blocked) or node2.empty):
-                        canvas.itemconfig(line, fill=cyan, width=3)
+                        self.window.canvas.itemconfig(line, fill=cyan, width=3)
 
     def render_board(self):
         """
@@ -1561,7 +1617,7 @@ class Board(object):
 
         credit_text = "A simulation based on the original hacking minigame in EVE Online, by Gerard Amatin"
         credits = tkinter.Label(
-            root, text=credit_text, bg=HEX, fg="grey", font=("Arial", 10)
+            self.window, text=credit_text, bg=HEX, fg="grey", font=("Arial", 10)
         )
         credits.place(
             x=(self.engine.width * (BUTTON_SIZE + X_SPACING)) // 2 - 240,
@@ -1582,10 +1638,10 @@ def fade_out_and_exit(window: tkinter.Tk, alpha: float = 1.0, success: bool = Fa
         text = "SYSTEM HACK FAILED"
 
     label = tkinter.Label(
-        root, text=text, font=("Arial", 24, "bold"), fg="white", bg=HEX
+        window, text=text, font=("Arial", 24, "bold"), fg="white", bg=HEX
     )
-    label_x = BOARD_WIDTH * (BUTTON_SIZE + X_SPACING) / 2 - 180
-    label_y = BOARD_HEIGHT * (Y_SPACING) / 2 + 60
+    label_x = window.winfo_width() / 2 - 215
+    label_y = window.winfo_height() / 2 - 40
     label.place(x=label_x, y=label_y)
 
     if alpha > 0:
@@ -1593,26 +1649,330 @@ def fade_out_and_exit(window: tkinter.Tk, alpha: float = 1.0, success: bool = Fa
         window.attributes("-alpha", alpha)
         window.after(100, fade_out_and_exit, window, alpha, success)
     else:
-        window.destroy()
+        if RETURN_TO_MENU_UPON_FINISH:
+            window.iconify()
+            window.attributes("-alpha", 1)
+            window.open_menu()
+        else:
+            window.destroy()
     pass
 
 
-def main():
-    player = Player(coherence=COHERENCE, strength=STRENGTH)
+class MenuWindow(tkinter.Toplevel):
+    """
+    A menu for the game that allows easy selection of difficulty, board and player settings.
+    """
 
-    engine = Engine(player, difficulty=DIFFICULTY)
-    engine.create_nodes()
-    engine.initialize()
+    def __init__(self, game_window):
+        super().__init__(game_window)
+        self.attributes("-alpha", 0)
+        self.game_window = game_window
 
-    board = Board(engine.nodes, engine, player)
-    board.render_board()
+        # Used to drag the menu around
+        self._offset_x = 0
+        self._offset_y = 0
 
-    window_width = engine.width * (BUTTON_SIZE + X_SPACING) + PADDING * 2
-    window_height = engine.height * Y_SPACING + BOTTOM_SPACE + PADDING * 2
-    root.geometry(f"{window_width}x{window_height}")
-    root.config(bg=HEX)
-    root.mainloop()
+        # Menu window looks: size, centered and no title bar
+        self.geometry(f"600x600")
+        self.game_window.center_window(self)
+        self.overrideredirect(True)
+
+        # Pretty image of an Astero as menu background
+        self.canvas = tkinter.Canvas(self, highlightthickness=0, bd=0)
+        self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        self.canvas.create_image(0, 0, image=IMAGES["Menu"], anchor="nw")
+
+        # Buttons
+        self.button_style = {
+            "font": ("Small Fonts", 8, "bold"),
+            "relief": "flat",
+            "fg": HEX_MENU2,
+            "bg": HEX_MENU,
+            "borderwidth": 0,
+            "highlightthickness": 0,
+            "activebackground": HEX_MENU,
+            "activeforeground": "white",
+            "padx": 5,
+            "pady": 5,
+        }
+
+        button = tkinter.Button(
+            self, text="Return", **self.button_style, command=self.game_window.open_game
+        )
+        self.canvas.create_window(210, 390, window=button)
+        button = tkinter.Button(
+            self, text="Quit", **self.button_style, command=self.game_window.close_game
+        )
+        self.canvas.create_window(210, 355, window=button)
+
+        # Placing these in the same order as they're on the menu for predictable tabbing
+        self.height = self.entry_button(BOARD_HEIGHT, "Rows: ", 85, 205)
+        self.width = self.entry_button(BOARD_WIDTH, "Columns: ", 90, 240)
+        self.gaps = self.entry_button(FRACTION_GAPS, "Gaps: 1 in", 100, 275)
+        self.defense = self.entry_button(FRACTION_DEFENSE, "Defense: 1 in", 120, 480)
+        self.utility = self.entry_button(FRACTION_UTILITY, "Utility: 1 in", 145, 515)
+        self.cache = self.entry_button(FRACTION_CACHE, "Cache: 1 in", 195, 550)
+        self.strength = self.entry_button(STRENGTH, "Strength: ᯤ", 480, 445)
+        self.coherence = self.entry_button(COHERENCE, "Coherence: ✶", 480, 410)
+
+        self.difficulty_button("very easy", 120, 70)
+        self.difficulty_button("easy", 230, 100)
+        self.difficulty_button("medium", 345, 90)
+        self.difficulty_button("hard", 460, 105)
+        self.difficulty_button("hardest", 520, 200)
+
+        # Binding some useful menu interactions: dragging and escape to close menu
+        self.bind("<Escape>", lambda e: self.game_window.open_game())
+        self.canvas.bind("<Button-1>", self.start_move)
+        self.canvas.bind("<B1-Motion>", self.do_move)
+
+        # Showing the menu now that it's complete
+        self.attributes("-alpha", 1)
+
+    def difficulty_button(self, difficulty, x, y):
+        """
+        Creates a difficulty button that starts a new game when pressed.
+        """
+        coherence = DIFFICULTY_VARIABLES[difficulty]["Core"]["Coherence"]
+        strength = DIFFICULTY_VARIABLES[difficulty]["Core"]["Strength"]
+        button = tkinter.Button(
+            self,
+            text=f"✶{coherence}\n\n\nᯤ{strength}",
+            image=IMAGES[DIFFICULTY_VARIABLES[difficulty]["Core_image_key"]],
+            font=("Arial", 8, "bold"),
+            relief="flat",
+            fg="white",
+            bg=HEX_MENU,
+            compound="center",
+            activebackground=HEX_MENU,
+            activeforeground="white",
+            borderwidth=0,
+            highlightthickness=0,
+            padx=5,
+            pady=5,
+            command=lambda d=difficulty: self.game_start_conditions(d),
+        )
+        self.canvas.create_window(x, y, window=button)
+
+    def entry_button(self, type, text, x, y):
+        """
+        Creates an entry button for the user to add custom values.
+        """
+        frame = tkinter.Frame(self, relief="flat", bg=HEX_MENU, padx=5, pady=2)
+        entry = tkinter.Entry(
+            frame,
+            width=3,
+            insertbackground="black",
+            selectbackground=HEX_MENU2,
+            selectforeground=HEX_MENU,
+            fg=HEX_MENU2,
+            bg="black",
+            validate="key",
+            validatecommand=(self.register(self.int_above_zero), "%P"),
+        )
+        entry.pack(side="right")
+        label = tkinter.Label(frame, text=text, **self.button_style)
+        label.pack(side="left")
+        self.canvas.create_window(x, y, window=frame)
+        entry.insert(0, type)
+        return entry
+
+    def game_start_conditions(self, difficulty):
+        """
+        Gets user input from the entry buttons and starts a game with those settings.
+        """
+
+        rows = int(self.height.get())
+        columns = int(self.width.get())
+        strength = int(self.strength.get())
+        coherence = int(self.coherence.get())
+        gaps = int(self.gaps.get())
+        defense = int(self.defense.get())
+        utility = int(self.utility.get())
+        cache = int(self.cache.get())
+        if gaps > 1:
+            self.game_window.start_new_game(
+                difficulty=difficulty,
+                rows=rows,
+                columns=columns,
+                strength=strength,
+                coherence=coherence,
+                gaps=gaps,
+                defense=defense,
+                utility=utility,
+                cache=cache,
+            )
+        else:
+            print(
+                "How are you going to play on an empty board? Try increasing the gaps value."
+            )
+
+    def int_above_zero(self, proposed):
+        """
+        Used for the entry buttons to force positive integer input only.
+        Also below 1000 because I didn't make the input window wide enough for more.
+        """
+
+        if proposed == "":
+            return True
+        if proposed.isdigit():
+            value = int(proposed)
+            return 0 < value < 1000
+        return False
+
+    def start_move(self, event):
+        """
+        Click and drag distance tracker.
+        """
+        self._offset_x = event.x
+        self._offset_y = event.y
+
+    def do_move(self, event):
+        """
+        Click and drag mover.
+        """
+        x = self.winfo_pointerx() - self._offset_x
+        y = self.winfo_pointery() - self._offset_y
+        self.geometry(f"+{x}+{y}")
+
+
+class GameWindow(tkinter.Tk):
+    """
+    The game window that will contain the board (and a menu button) and all it's methods.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.attributes("-alpha", 0)
+        self.menu = None
+        self.protocol("WM_DELETE_WINDOW", self.close_game)
+        self.title("EVE Hacking Simulator")
+        self.config(bg=HEX)
+
+        # Loading all relevant images to the gamewindow so they're available elsewhere
+        load_images(self)
+
+        # Initiating a game with the default settings
+        self.start_new_game(
+            difficulty=DIFFICULTY,
+            rows=BOARD_HEIGHT,
+            columns=BOARD_WIDTH,
+            strength=STRENGTH,
+            coherence=COHERENCE,
+            gaps=FRACTION_GAPS,
+            defense=FRACTION_DEFENSE,
+            utility=FRACTION_UTILITY,
+            cache=FRACTION_CACHE,
+        )
+
+        # Center and show the window
+        self.after_idle(self.initiate_window_position)
+
+    def start_new_game(
+        self,
+        difficulty,
+        rows,
+        columns,
+        strength,
+        coherence,
+        gaps,
+        defense,
+        utility,
+        cache,
+    ):
+        """
+        Starts a new game with all the input parameters.
+        """
+
+        print(
+            f"\nStarting Values: \n- Difficulty is {difficulty}\n- Player has {coherence} coherence and {strength} strength\n- Board is {rows} rows by {columns} columns\n- Gaps in the board take away one in {gaps} nodes\n- Defense nodes are found in one in {defense} nodes\n- Utility nodes are found in one in {utility} nodes\n- Data caches are found in one in {cache} nodes\n"
+        )
+
+        player = Player(coherence, strength)
+        engine = Engine(
+            player, difficulty, rows, columns, gaps, defense, utility, cache
+        )
+        engine.create_nodes()
+        engine.initialize()
+        self.canvas = tkinter.Canvas(self, bg=HEX, highlightthickness=0)
+        self.canvas.place(x=0, y=0, relwidth=1, relheight=1)
+        self.menu_button(self.canvas)
+        board = Board(self, engine.nodes, engine, player)
+        board.render_board()
+        window_width = engine.width * (BUTTON_SIZE + X_SPACING) + PADDING * 2
+        window_height = engine.height * Y_SPACING + BOTTOM_SPACE + PADDING * 2
+        self.geometry(f"{window_width}x{window_height}")
+
+        self.open_game()
+
+    def open_game(self):
+        """
+        Brings the game to front and hides the menu.
+        """
+        self.deiconify()
+        self.attributes("-topmost", True)
+        self.after_idle(lambda: self.attributes("-topmost", False))
+        if self.menu:
+            self.menu.withdraw()
+
+    def initiate_window_position(self):
+        """
+        Called at end of loading to center the game window and then reveal it.
+        """
+        self.after(0, lambda: self.center_window(self))
+        self.after(0, lambda: self.attributes("-alpha", 1))
+
+    def open_menu(self):
+        """
+        Creates or reopens the menu.
+        """
+        if self.menu is None or not self.menu.winfo_exists():
+            self.menu = MenuWindow(self)
+        else:
+            self.menu.deiconify()
+            self.menu.attributes("-topmost", True)
+            self.after_idle(lambda: self.menu.attributes("-topmost", False))
+
+    def center_window(self, window):
+        """
+        Centers the window to the middle of the main monitor.
+        """
+        window.update_idletasks()
+        win_w = window.winfo_width()
+        win_h = window.winfo_height()
+        screen_w = window.winfo_screenwidth()
+        screen_h = window.winfo_screenheight()
+        x = (screen_w - win_w) // 2
+        y = (screen_h - win_h) // 2
+        window.geometry(f"{win_w}x{win_h}+{x}+{y}")
+
+    def menu_button(self, canvas):
+        """
+        Adds a menu button to the main window.
+        """
+        menu_button = tkinter.Button(
+            canvas,
+            text="Menu",
+            font=("Small Fonts", 8, "bold"),
+            relief="flat",
+            activebackground=HEX_MENU,
+            activeforeground=HEX_MENU2,
+            borderwidth=0,
+            highlightthickness=0,
+            fg="white",
+            bg=HEX,
+            command=self.open_menu,
+        )
+        menu_button.pack(anchor="ne", padx=10, pady=10)
+
+    def close_game(self):
+        """
+        Also destroys the menu when the game is closed.
+        """
+        if self.menu:
+            self.menu.destroy()
+        self.destroy()
 
 
 if __name__ == "__main__":
-    main()
+    GameWindow().mainloop()
