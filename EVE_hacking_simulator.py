@@ -33,6 +33,9 @@ FRACTION_CACHE = 25
 # Returns back to the menu when you fail or succeed, exits the game if False.
 RETURN_TO_MENU_UPON_FINISH = True
 
+# Turn to true to feel the true risk of hacking
+CLOAKY_LOKI = False
+
 ####################################################
 
 
@@ -1005,7 +1008,20 @@ class Engine(object):
             # This does make it less likely that Restoration spoils a well-calculated Vector kill.
             Restoration.restore_defense_nodes(self.events, self)
 
+            self.cloaky_loki()
+
             self.turn += 1
+
+    def cloaky_loki(self):
+        """
+        Makes a cloaky Loki appear in rare cases, which proceeds to interrupt your hacking attempt.
+        """
+        cloaky_loki_chance = 0.001
+        if CLOAKY_LOKI:
+            if random.random() < cloaky_loki_chance:
+                self.player.finished = True
+                print(f"\n\nA CLOAKY LOKI APPEARED\nand one-shot your ship\n")
+                self.events.append(("game_finished", False))
 
     def on_node_click(self, node: Node):
         """
