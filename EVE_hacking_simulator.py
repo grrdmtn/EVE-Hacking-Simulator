@@ -803,7 +803,7 @@ class Engine(object):
         # a defense surrounded by 6 is next to the core
         core_neighbours = set(self.get_neighbours(self.core))
         valid_set = set(available_nodes)
-        candidates = list(core_neighbours & valid_set)
+        candidates = list(core_neighbours & valid_set - set(start_neighbours))
         if candidates:
             node = random.choice(candidates)
             if node in valid_encounter_nodes:
