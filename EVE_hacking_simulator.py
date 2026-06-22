@@ -1,7 +1,7 @@
 # Filename: EVE_hacking_simulator.py
 # Author: Gerard Amatin
-# Created: 2026-06-19
-# Version: 1.0
+# Created: 2026-06-22
+# Version: 1.1
 # Description: This script runs a fully functional offline version of the original hacking minigame in EVE Online.
 
 ####################################################
@@ -33,8 +33,11 @@ FRACTION_CACHE = 25
 # Returns back to the menu when you fail or succeed, exits the game if False.
 RETURN_TO_MENU_UPON_FINISH = True
 
-# Turn to true to feel the true risk of hacking
+# Turn to True to feel the true risk of hacking.
 CLOAKY_LOKI = False
+
+# For testing purposes, turn to True if you wish to see the location of all encounters.
+VISIBILITY_HACKS = False
 
 ####################################################
 
@@ -669,32 +672,10 @@ class Engine(object):
             self.nodes.append([None] * self.width)
             for column in range(self.width):
                 self.nodes[row][column] = Node(row, column)
+
         self.remove_random_nodes()
-
-        # Ensure that the starting node is not on a small island,
-        # which can exist because of the random removal of nodes
-        while True:
-            self.create_start_node()
-            self.reset_distances()
-            self.start_node.distance = 0
-
-            # Picking a dynamic threshold that should not be too small (increased tiny island risk)
-            # and also not too big (endless loop)
-            threshold = (self.width + self.height) // 3
-            self.set_distances(threshold)
-            max_distance = max(
-                node.distance for node in self.iter_nodes() if node.distance is not None
-            )
-            if max_distance >= threshold:
-                # Good enough! Let's pick this location
-                break
-
-        # Remove the disconnected islands
-        for node in self.iter_nodes():
-            if node.distance is None:
-                node.removed = True
-
-        # Distribute the rest of the landmarks
+        self.remove_islands()
+        self.create_start_node()
         self.create_core()
         self.distribute_encounters()
 
@@ -707,23 +688,58 @@ class Engine(object):
             node = random.choice(row)
             node.removed = True
 
-    def create_start_node(self):
+    def remove_islands(self):
         """
-        Sets a random existing node as the new start node.
+        Removes islands of nodes that got disconnected from the rest as result of removal of random nodes.
         """
 
-        self.reset_start_node()
         while True:
-            start_row = random.choice(self.nodes)
-            start_node = random.choice(start_row)
-            if not start_node.removed:
-                start_node.is_start = True
-                self.start_node = start_node
+            node = self.pick_random_node()
+            self.reset_distances()
+            node.distance = 0
+
+            # Picking a dynamic threshold that scales with board size,
+            # should not be too small (increased risk of being on a smaller island)
+            # but also not too big (risk of no possibility and endless loop)
+            threshold = (self.width + self.height) // 3
+            self.set_distances(threshold)
+            max_distance = max(
+                node.distance for node in self.iter_nodes() if node.distance is not None
+            )
+            if max_distance >= threshold:
+                # Good enough! This node seems part of the main board
                 break
 
-    def reset_start_node(self):
+        # Remove the disconnected islands
         for node in self.iter_nodes():
-            node.is_start = False
+            if node.distance is None:
+                node.removed = True
+
+    def pick_random_node(self):
+        """
+        Returns a random existing node.
+        """
+        while True:
+            random_row = random.choice(self.nodes)
+            random_node = random.choice(random_row)
+            if not random_node.removed:
+                return random_node
+
+    def create_start_node(self):
+        """
+        Picks a random node of those with the least neighbours as the starting node.
+        """
+        for spoke_amount in range(1, 4):
+            start_options = []
+            for node in self.iter_nodes():
+                if not node.removed:
+                    if len(self.get_neighbours(node)) == spoke_amount:
+                        start_options.append(node)
+            if len(start_options) > 0:
+                start_node = random.choice(start_options)
+                start_node.is_start = True
+                self.start_node = start_node
+                return
 
     def create_core(self):
         """
@@ -753,50 +769,57 @@ class Engine(object):
         Spreads encounters randomly across the available nodes.
         """
 
-        valid_nodes = [
+        available_nodes = [
             node
             for node in self.iter_nodes()
             if not node.removed and not node.is_start and not node.is_core
         ]
-        random.shuffle(valid_nodes)
+        # Apply 'rule of 6': nodes surrounded by 6 neigbours generally do not have encounters
+        valid_encounter_nodes = [
+            node for node in available_nodes if len(self.get_neighbours(node)) < 6
+        ]
+        random.shuffle(valid_encounter_nodes)
+
+        # Defenses cannot spawn next to the start node
+        start_neighbours = self.get_neighbours(self.start_node)
+        valid_defense_nodes = [
+            node for node in valid_encounter_nodes if node not in start_neighbours
+        ]
 
         # Calculate how many nodes of each type spawn
-        defenses = math.ceil(len(valid_nodes) / self.defense_distributed)
-        utilities = math.ceil(len(valid_nodes) / self.utility_distributed)
-        caches = math.ceil(len(valid_nodes) / self.cache_distributed)
+        defenses = math.ceil(len(valid_defense_nodes) / self.defense_distributed)
+        utilities = math.ceil(len(valid_encounter_nodes) / self.utility_distributed)
+        caches = math.ceil(len(valid_encounter_nodes) / self.cache_distributed)
 
-        # Place defenses according to 'rule of 6': defense never spawns when surrounded by 6 nodes
-        valid_defense_nodes = [
-            node for node in valid_nodes if len(self.get_neighbours(node)) < 6
-        ]
-        random.shuffle(valid_defense_nodes)
-
+        # Place defenses
         for node in valid_defense_nodes[:defenses]:
-            valid_nodes.remove(node)
+            valid_encounter_nodes.remove(node)
+            valid_defense_nodes.remove(node)
             defense = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Defenses"])
             node.encounter = defense(self.player, self, self.difficulty, node)
 
-        # Also place one more defense node next to the core if possible
+        # Also place one more defense node anywhere next to the core if possible
         # This is the special case that doesn't adhere to 'rule of 6':
         # a defense surrounded by 6 is next to the core
         core_neighbours = set(self.get_neighbours(self.core))
-        valid_set = set(valid_nodes)
+        valid_set = set(available_nodes)
         candidates = list(core_neighbours & valid_set)
         if candidates:
             node = random.choice(candidates)
-            valid_nodes.remove(node)
+            if node in valid_encounter_nodes:
+                valid_encounter_nodes.remove(node)
             defense = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Defenses"])
             node.encounter = defense(self.player, self, self.difficulty, node)
 
         # Randomly place utilities
-        for node in valid_nodes[:utilities]:
-            node = valid_nodes.pop()
+        for node in valid_encounter_nodes[:utilities]:
+            valid_encounter_nodes.remove(node)
             utility = random.choice(DIFFICULTY_VARIABLES[self.difficulty]["Utilities"])
             node.encounter = utility(self.player, self, self.difficulty, node)
 
         # And data caches
-        for node in valid_nodes[:caches]:
-            node = valid_nodes.pop()
+        for node in valid_encounter_nodes[:caches]:
+            valid_encounter_nodes.remove(node)
             node.encounter = DataCache(self.player, self, self.difficulty, node)
 
     def get_neighbours(self, center_node: Node):
@@ -1239,6 +1262,13 @@ class Board(object):
             elif node.can_be_visited:
                 image = IMAGES["Encrypted"]
             elif node.visited and node.encounter:
+                image = node.encounter.image
+                if isinstance(node.encounter, Defense):
+                    text = (
+                        f"✶{node.encounter.coherence}\n\n\nᯤ{node.encounter.strength}"
+                    )
+            # For testing purposes, overrides the visibility of the encounters
+            if VISIBILITY_HACKS and node.encounter:
                 image = node.encounter.image
                 if isinstance(node.encounter, Defense):
                     text = (
