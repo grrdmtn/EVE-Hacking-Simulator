@@ -1,7 +1,7 @@
 # Filename: EVE_hacking_simulator.py
 # Author: Gerard Amatin
-# Created: 2026-06-22
-# Version: 1.1
+# Created: 2026-07-01
+# Version: 1.2
 # Description: This script runs a fully functional offline version of the original hacking minigame in EVE Online.
 
 ####################################################
@@ -24,7 +24,8 @@ COHERENCE = 110
 BOARD_HEIGHT = 9
 BOARD_WIDTH = 10
 
-# Fractions should be interpreted as 1/FRACTION, so a value of 4 affects a quarter of the nodes.
+# Is used to scale distributions to board size. Fractions should be interpreted as 1/FRACTION, so a value of 4 affects up to a quarter of the total available nodes without 6 neighbours.
+# TL;DR: lower is more of that thing
 FRACTION_GAPS = 4
 FRACTION_DEFENSE = 25
 FRACTION_UTILITY = 25
@@ -780,11 +781,15 @@ class Engine(object):
         ]
         random.shuffle(valid_encounter_nodes)
 
-        # Defenses cannot spawn next to the start node
+        # Defenses have a subset as they cannot spawn next to the start node
         start_neighbours = self.get_neighbours(self.start_node)
         valid_defense_nodes = [
             node for node in valid_encounter_nodes if node not in start_neighbours
         ]
+
+        # Caches cannot spawn next to the start node either, but also cannot spawn in any node with 4 or more spokes
+        valid_cache_nodes = [node for node in valid_encounter_nodes if len(self.get_neighbours(node)) < 4 and node not in start_neighbours]
+
 
         # Calculate how many nodes of each type spawn
         defenses = math.ceil(len(valid_defense_nodes) / self.defense_distributed)
@@ -818,8 +823,10 @@ class Engine(object):
             node.encounter = utility(self.player, self, self.difficulty, node)
 
         # And data caches
-        for node in valid_encounter_nodes[:caches]:
-            valid_encounter_nodes.remove(node)
+        for node in valid_cache_nodes[:caches]:
+            valid_cache_nodes.remove(node)
+            if node in valid_encounter_nodes:
+                valid_encounter_nodes.remove(node)
             node.encounter = DataCache(self.player, self, self.difficulty, node)
 
     def get_neighbours(self, center_node: Node):
