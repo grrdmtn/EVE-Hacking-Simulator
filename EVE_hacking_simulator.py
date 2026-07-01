@@ -1,7 +1,7 @@
 # Filename: EVE_hacking_simulator.py
 # Author: Gerard Amatin
 # Created: 2026-07-01
-# Version: 1.2
+# Version: 1.3
 # Description: This script runs a fully functional offline version of the original hacking minigame in EVE Online.
 
 ####################################################
@@ -27,9 +27,9 @@ BOARD_WIDTH = 10
 # Is used to scale distributions to board size. Fractions should be interpreted as 1/FRACTION, so a value of 4 affects up to a quarter of the total available nodes without 6 neighbours.
 # TL;DR: lower is more of that thing
 FRACTION_GAPS = 4
-FRACTION_DEFENSE = 25
-FRACTION_UTILITY = 25
-FRACTION_CACHE = 25
+FRACTION_DEFENSE = 15
+FRACTION_UTILITY = 15
+FRACTION_CACHE = 15
 
 # Returns back to the menu when you fail or succeed, exits the game if False.
 RETURN_TO_MENU_UPON_FINISH = True
@@ -453,7 +453,6 @@ class Vector(Utility):
         self.player.target_selection = None
         self.activated = True
         print(f"The {node.encounter.type}'s coherence is affected by Secondary Vector.")
-        self.reduce(node, events)
         self.target_node = node
 
     def activate(self, events):
@@ -537,10 +536,7 @@ class Repair(Utility):
                 self.turn_into_empty_slot()
 
     def activate(self, events):
-        # TODO: Check this. Not sure if using a second self repair is blocked by using a first, if it stacks or overrides.
-        # Implementing it for now as if I can use them all and they stack.
         if not self.activated:
-            self.repair(events)
             self.activated = True
             print(f"Activating {self.type}!")
         else:
@@ -788,8 +784,11 @@ class Engine(object):
         ]
 
         # Caches cannot spawn next to the start node either, but also cannot spawn in any node with 4 or more spokes
-        valid_cache_nodes = [node for node in valid_encounter_nodes if len(self.get_neighbours(node)) < 4 and node not in start_neighbours]
-
+        valid_cache_nodes = [
+            node
+            for node in valid_encounter_nodes
+            if len(self.get_neighbours(node)) < 4 and node not in start_neighbours
+        ]
 
         # Calculate how many nodes of each type spawn
         defenses = math.ceil(len(valid_defense_nodes) / self.defense_distributed)
@@ -1118,8 +1117,8 @@ class Engine(object):
                 if isinstance(node.encounter, Defense):
                     print(f"Targeting a {node.encounter.type}.")
                     self.player.target_selection.affect_target(node, self.events)
-                    if not node.encounter:
-                        self.defense_died(node)
+                    self.new_turn()
+
                 else:
                     print("Wrong target.")
                     self.player.target_selection.targeting = False
@@ -1129,6 +1128,21 @@ class Engine(object):
                 self.player.target_selection.targeting = False
                 self.player.target_selection = None
         return targeting
+
+    def on_utility_click(self, slot):
+        """
+        Handles what happens when an utility slot is clicked.
+        """
+
+        if self.player.utilities[slot]:
+            was_activated = self.player.utilities[slot].activated
+            self.player.utilities[slot].activate(self.events)
+            is_now_activated = self.player.utilities[slot].activated
+            if not was_activated and is_now_activated:
+                # Is needed for non-targeting utility. Targeted utility is checked in target_mode.
+                self.new_turn()
+        else:
+            print("This slot is empty.")
 
 
 class Board(object):
@@ -1522,11 +1536,7 @@ class Board(object):
         """
         Handles everything that needs to be done whenever a utility button is clicked.
         """
-
-        if self.player.utilities[slot]:
-            self.player.utilities[slot].activate(self.engine.events)
-        else:
-            print("This slot is empty.")
+        self.engine.on_utility_click(slot)
         self.handle_events()
 
     def handle_events(self):
