@@ -1,7 +1,7 @@
 # Filename: EVE_hacking_simulator.py
 # Author: Gerard Amatin
-# Created: 2026-07-01
-# Version: 1.3
+# Created: 2026-07-05
+# Version: 1.4
 # Description: This script runs a fully functional offline version of the original hacking minigame in EVE Online.
 
 ####################################################
@@ -740,22 +740,37 @@ class Engine(object):
 
     def create_core(self):
         """
-        The core is at least 8 steps away from start if possible, otherwise in any random spot.
+        The core is at least 8 steps away (ignoring gaps) from start if possible, known as 'rule of 8' or 'before 8 it is bait'.
+        If this is not possible, for example because the start is in the middle and too close to the edges the core can be in any random spot.
 
-        (This last condition is what causes the regular "I found the core at first step!" posts)
+        This last condition is what causes regular "I found the core at first step!" posts.
         """
+        # TODO: minimum distance seems 8 for larger boards. Unknown if this is also true for smaller board sizes.
+        # TODO: As this simulator allows scaling board sizes far beyond what EVE allows, should this value stay 8 or be made dynamic?
+        preferred_minimum_distance = 8
+
+        # The rule of 8 appears to be ignored when there are only two candidates or less. This seems logical, as the rule of 8 could spoil the location if there are too few possible options.
+        # TODO: I have yet to find examples where 3 or more candidates were ignored, but the minimum could be higher than 3 and should be updated if we know more.
+        minimum_number_candidates = 3
+
         self.reset_distances()
         self.start_node.distance = 0
-        self.set_distances(8)
+        self.set_distances(preferred_minimum_distance, also_count_gaps=True)
 
         any_core_options = [
             node
             for node in self.iter_nodes()
             if not node.removed and node.distance != 0
         ]
-        far_core_options = [node for node in any_core_options if node.distance > 7]
+        far_core_options = [
+            node
+            for node in any_core_options
+            if node.distance >= preferred_minimum_distance
+        ]
         core_options = (
-            far_core_options if len(far_core_options) > 0 else any_core_options
+            far_core_options
+            if len(far_core_options) >= minimum_number_candidates
+            else any_core_options
         )
         self.core = random.choice(core_options)
         self.core.is_core = True
@@ -828,7 +843,7 @@ class Engine(object):
                 valid_encounter_nodes.remove(node)
             node.encounter = DataCache(self.player, self, self.difficulty, node)
 
-    def get_neighbours(self, center_node: Node):
+    def get_neighbours(self, center_node: Node, also_count_gaps: bool = False):
         """
         Returns a list of all existing neighbours of the node in the hexagonal grid.
         """
@@ -845,11 +860,11 @@ class Engine(object):
             column = center_node.column + dc
             if 0 <= row < self.height and 0 <= column < self.width:
                 node = self.nodes[row][column]
-                if node is not None and not node.removed:
+                if node is not None and (not node.removed or also_count_gaps):
                     neighbours.append(node)
         return neighbours
 
-    def set_distances(self, max_value: int = 10):
+    def set_distances(self, max_value: int = 10, also_count_gaps: bool = False):
         """
         Sets distance of each node to the nearest node(s) that have already been defined to have 'distance = 0'.
 
@@ -860,14 +875,14 @@ class Engine(object):
         for i in range(self.width * self.height):
             changed = False
             for node in self.iter_nodes():
-                if node is None or node.removed:
+                if (node is None or node.removed) and not also_count_gaps:
                     continue
                 if node.distance == i or node.distance == max_value:
-                    neighbours = self.get_neighbours(node)
+                    neighbours = self.get_neighbours(node, also_count_gaps)
                     for neighbour in neighbours:
                         if (
                             neighbour
-                            and not neighbour.removed
+                            and (not neighbour.removed or also_count_gaps)
                             and neighbour.distance is None
                         ):
                             neighbour.distance = min(i + 1, max_value)
