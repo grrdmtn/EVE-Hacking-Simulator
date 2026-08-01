@@ -1,6 +1,7 @@
 ## EVE Hacking Simulator
 
-![EVE Hacking Simulator](https://github.com/grrdmtn/EVE-Hacking-Simulator/blob/d760df856e8a855508b58465d6a66d1613f04763/EVE%20Hacking%20Simulator%20screenshot.png)
+![EVE Hacking Simulator](https://raw.githubusercontent.com/grrdmtn/EVE-Hacking-Simulator/refs/heads/main/Preview_image.png)
+
 
 ## What am I looking at?
 
